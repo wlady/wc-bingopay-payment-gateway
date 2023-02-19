@@ -1,0 +1,16 @@
+{
+    "require": {
+        "php": "^7.4|^8.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "WCBingopay\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Vladimir Zabara",
+            "email": "wlady2001@gmail.com"
+        }
+    ]
+}
