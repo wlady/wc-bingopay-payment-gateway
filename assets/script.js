@@ -1,6 +1,6 @@
 jQuery(document).ready( function($) {
     var form = $('form[name=checkout]');
-    if (form.length == 0) {
+    if (form.length === 0) {
         form = $('form#order_review');
     }
     form.on('submit', function(event) {
@@ -21,7 +21,7 @@ jQuery(document).ready( function($) {
                 return false;
             }
             var name = $('#bingopay_gateway-card-holder-name').val().replace(/\s/g, '');
-            if (name.length == 0) {
+            if (name.length === 0) {
                 alert('Check card holder name field');
                 return false;
             }
@@ -45,7 +45,7 @@ jQuery(document).ready( function($) {
                         $('.bingopay-3ds-window').show();
                         $('.iframe-loader').hide();
                         if (response.data) {
-                            if (response.data.redirect_url.length != 0) {
+                            if (response.data.redirect_url.length !== 0) {
                                 $('#bingopay-3ds-window').attr('src', response.data.redirect_url);
                                 $('#bingoPayModal').show();
                             }

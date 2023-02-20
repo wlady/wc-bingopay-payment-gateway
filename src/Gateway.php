@@ -15,6 +15,7 @@ if ( class_exists( "WC_Payment_Gateway_CC", false ) ) {
 
 		public $supports = [
 			'products',
+			'refunds',
 		];
 
 		private $addresses = [
@@ -275,14 +276,17 @@ if ( class_exists( "WC_Payment_Gateway_CC", false ) ) {
 				$order->set_payment_method( $this->id );
 				$order->set_transaction_id( $transaction_number );
 				$transaction_details = DBHelper::transaction_details_by_transaction_id( $transaction_number );
-//				Logger::info( [ $transaction_number, $transaction_status, $order_id, $transaction_details ] );
 				if ( $set_billing_address ) {
-					$this->set_address( $order, $transaction_details, 'billing' );
-					$this->set_address( $order, $transaction_details, 'shipping' );
+					$this->set_address( $order, $transaction_details['data'] ?? [], 'billing' );
+					$this->set_address( $order, $transaction_details['data'] ?? [], 'shipping' );
 					$order->save();
 				}
 				$order->payment_complete();
 				$order->update_status( 'processing' );
+				// save for refund operation
+				update_post_meta( $order_id, '_transaction_id', $transaction_number );
+				$transaction_details['data']['payment']['order_id'] = $order_id;
+				DBHelper::update_transaction( $transaction_number, $transaction_details['data'] );
 				$url = $this->get_return_url( $order ) . '&window=parent';
 			} else {
 				$url = wc_get_endpoint_url( 'order-pay', '', wc_get_checkout_url() );
@@ -305,17 +309,14 @@ if ( class_exists( "WC_Payment_Gateway_CC", false ) ) {
 			];
 
 			$response = Api::create_transaction( $settings, $payload );
-			if ( BINGOPAY_DEBUG ) {
-				Logger::info( $response );
-			}
 			if ( ! empty( $response['result'] ) ) {
 				$payload['card_number'] = '****' . substr( $payload['card_number'], - 4 );
-				$log_info = [
+				$log_info               = [
 					'payment'  => $payload,
 					'billing'  => $this->get_address( 'billing' ),
 					'shipping' => $this->get_address( 'shipping' ),
 				];
-				DBHelper::save_transaction( $response['result']['transaction'], $log_info );
+				DBHelper::create_transaction( $response['result']['transaction'], $log_info );
 
 				return $response['result'];
 			}
@@ -333,13 +334,31 @@ if ( class_exists( "WC_Payment_Gateway_CC", false ) ) {
 			return $address;
 		}
 
-		private function set_address( $order, $transaction, $source ) {
-			foreach ( $transaction[ $source ] ?? [] as $key => $value ) {
-//			    Logger::info(["set_{$source}_{$key}", is_callable( [ $order, "set_{$source}_{$key}" ] )]);
+		private function set_address( $order, $data, $source ) {
+			foreach ( $data[ $source ] ?? [] as $key => $value ) {
 				if ( is_callable( [ $order, "set_{$source}_{$key}" ] ) ) {
 					$order->{"set_{$source}_{$key}"}( $value );
 				}
 			}
+		}
+
+		/**
+		 * @param int $order_id
+		 * @param float|null $amount
+		 * @param string $reason
+		 *
+		 * @return bool
+		 */
+		public function process_refund( $order_id, $amount = null, $reason = '' ) {
+			$order          = wc_get_order( $order_id );
+			$transaction_id = $order->get_meta( '_transaction_id', true );
+			$settings       = $this->get_settings();
+			$payload        = [
+				'transaction_id' => $transaction_id,
+			];
+			$response       = Api::refund( $settings, $payload );
+
+			return ( ! empty( $response['status'] ) && $response['status'] == Api::RETURN_CODE_OK );
 		}
 	}
 }

@@ -22,7 +22,7 @@ namespace WCBingopay;
 defined( 'ABSPATH' ) or exit;
 
 define( 'BINGOPAY_VERSION', '1.0.0' );
-define( 'BINGOPAY_SUPPORT_PHP', '7.3' );
+define( 'BINGOPAY_SUPPORT_PHP', '7.4' );
 define( 'BINGOPAY_SUPPORT_WP', '5.0' );
 define( 'BINGOPAY_SUPPORT_WC', '3.0' );
 define( 'BINGOPAY_DB_VERSION', '1.0' );
@@ -72,41 +72,36 @@ add_action( 'plugins_loaded', function() {
 	new Gateway();
 }, 11 );
 
-add_filter( 'wp_ajax_bignopay_3ds_form', function() {
+$ajax_callback = function() {
 	$res =  (new Gateway)->check_3ds();
 	echo json_encode( [
 		'data' => $res,
 	] );
 	wp_die();
-});
+};
 
-add_filter( 'wp_ajax_nopriv_bignopay_3ds_form', function() {
-	$res =  (new Gateway)->check_3ds();
-	echo json_encode( [
-		'data' => $res,
-	] );
-	wp_die();
-});
+add_filter( 'wp_ajax_bignopay_3ds_form', $ajax_callback );
+add_filter( 'wp_ajax_nopriv_bignopay_3ds_form', $ajax_callback );
 
 add_action( 'woocommerce_checkout_before_order_review', function() {
 	$cart_total = WC()->cart->get_cart_contents_total();
-    echo <<<EOB1
+    echo <<<EOB
         <script>
             var currentOrderId = '';
             var currentOrderTotal = {$cart_total};
         </script>
-EOB1;
+EOB;
 });
 
 add_action( 'woocommerce_pay_order_before_submit', function() {
     $order    = wc_get_order( wc_get_order_id_by_order_key( sanitize_text_field( $_GET['key'] ) ) );
     $amount   = $order->get_total();
-    echo <<<EOB2
+    echo <<<EOB
         <script>
             var currentOrderId = {$order->get_id()};
             var currentOrderTotal = {$amount};
         </script>
-EOB2;
+EOB;
 });
 
 add_action( 'wp_enqueue_scripts', function() {
@@ -141,7 +136,7 @@ add_action( 'wp_footer', function() {
         const queryString = window.location.search;
         const urlParams = new URLSearchParams(queryString);
         const window_param = urlParams.get('window')
-        if (window_param == 'parent') {
+        if (window_param === 'parent') {
             url = window.location.href.replace('&window=parent', '');
             window.parent.location = url;
         }
@@ -189,4 +184,4 @@ add_action( 'wp_footer', function() {
 <?php
 });
 
-define( 'BINGOPAY_CALLBACK_URL', add_query_arg( 'wc-api', 'WC_Gateway_BingoPay', home_url( '/' ) ) );
+define( 'BINGOPAY_CALLBACK_URL', add_query_arg( 'wc-api', 'WC_Gateway_BingoPay', home_url() ) );
