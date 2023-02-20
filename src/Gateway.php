@@ -310,13 +310,14 @@ if ( class_exists( "WC_Payment_Gateway_CC", false ) ) {
 
 			$response = Api::create_transaction( $settings, $payload );
 			if ( ! empty( $response['result'] ) ) {
+				// mask card number
 				$payload['card_number'] = '****' . substr( $payload['card_number'], - 4 );
-				$log_info               = [
+				$details                = [
 					'payment'  => $payload,
 					'billing'  => $this->get_address( 'billing' ),
 					'shipping' => $this->get_address( 'shipping' ),
 				];
-				DBHelper::create_transaction( $response['result']['transaction'], $log_info );
+				DBHelper::create_transaction( $response['result']['transaction'], $details );
 
 				return $response['result'];
 			}
