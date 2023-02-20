@@ -176,7 +176,7 @@ add_action( 'wp_footer', function() {
 			<div class="modal-content">
 				<div class="modal-body">
                     <div class="iframe-loader"><span class="loader"></span></div>
-					<iframe id="bingopay-3ds-window" width="100%" height="200vh" src="" frameborder="0"></iframe>
+					<iframe id="bingopay-3ds-window" width="100%" height="600vh" src="" frameborder="0"></iframe>
 				</div>
 			</div>
 		</div>

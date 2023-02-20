@@ -267,6 +267,11 @@ if ( class_exists( "WC_Payment_Gateway_CC", false ) ) {
 				Logger::info( [ $transaction_number, $transaction_status, $order_id ] );
 			}
 			if ( $transaction_status == Api::STATUS_APPROVED ) {
+				$transaction_details = DBHelper::transaction_details_by_transaction_id( $transaction_number );
+				// restore session & cart
+				wp_set_current_user( $transaction_details['data']['payment']['user_id'] );
+				WC()->cart->set_cart_contents( $transaction_details['data']['cart'] );
+				WC()->cart->calculate_totals();
 				$set_billing_address = false;
 				if ( empty( $order_id ) ) {
 					$order_id            = ( new \WC_Checkout() )->create_order( [] );
@@ -275,7 +280,6 @@ if ( class_exists( "WC_Payment_Gateway_CC", false ) ) {
 				$order = wc_get_order( $order_id );
 				$order->set_payment_method( $this->id );
 				$order->set_transaction_id( $transaction_number );
-				$transaction_details = DBHelper::transaction_details_by_transaction_id( $transaction_number );
 				if ( $set_billing_address ) {
 					$this->set_address( $order, $transaction_details['data'] ?? [], 'billing' );
 					$this->set_address( $order, $transaction_details['data'] ?? [], 'shipping' );
@@ -298,6 +302,7 @@ if ( class_exists( "WC_Payment_Gateway_CC", false ) ) {
 		public function check_3ds() {
 			$settings = $this->get_settings();
 			$payload  = [
+				'user_id'     => get_current_user_id(),
 				'order_id'    => sanitize_text_field( $_POST['order_id'] ),
 				'amount'      => sanitize_text_field( $_POST['amount'] ),
 				'currency'    => sanitize_text_field( $_POST['bingopay_gateway-card-currency-code'] ),
@@ -314,6 +319,7 @@ if ( class_exists( "WC_Payment_Gateway_CC", false ) ) {
 				$payload['card_number'] = '****' . substr( $payload['card_number'], - 4 );
 				$details                = [
 					'payment'  => $payload,
+					'cart'     => WC()->cart->get_cart_contents(),
 					'billing'  => $this->get_address( 'billing' ),
 					'shipping' => $this->get_address( 'shipping' ),
 				];
