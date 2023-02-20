@@ -59,7 +59,7 @@ class Api {
 				]
 			),
 		];
-		$url    = sprintf( '%s/%s?order_id=%d', $settings['url'], self::CREATE_PAYMENT_PATH, $payload['order_id'] );
+		$url    = sprintf( '%s/%s?order_id=%s', $settings['url'], self::CREATE_PAYMENT_PATH, $payload['order_id'] );
 		$result = wp_remote_post( $url, $args );
 		if ( BINGOPAY_DEBUG ) {
 			Logger::info( $result );

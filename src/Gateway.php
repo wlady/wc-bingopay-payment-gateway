@@ -17,6 +17,34 @@ if ( class_exists( "WC_Payment_Gateway_CC", false ) ) {
 			'products',
 		];
 
+		private $addresses = [
+			'billing'  => [
+				'first_name',
+				'last_name',
+				'company',
+				'address_1',
+				'address_2',
+				'city',
+				'state',
+				'postcode',
+				'country',
+				'email',
+				'phone',
+			],
+			'shipping' => [
+				'first_name',
+				'last_name',
+				'company',
+				'address_1',
+				'address_2',
+				'city',
+				'state',
+				'postcode',
+				'country',
+				'phone',
+			],
+		];
+
 		public function __construct() {
 
 			$this->id                 = 'bingopay_gateway';
@@ -32,12 +60,11 @@ if ( class_exists( "WC_Payment_Gateway_CC", false ) ) {
 			// Define user set variables
 			$this->title        = $this->get_option( 'title' );
 			$this->description  = $this->get_option( 'description' );
-			$this->instructions = $this->get_option( 'instructions', $this->description );
+			$this->instructions = $this->get_option( 'instructions' );
 
 			// Actions
 			add_action( 'woocommerce_update_options_payment_gateways_' . $this->id,
 				[ $this, 'process_admin_options' ] );
-			add_action( 'woocommerce_credit_card_form_start', [ $this, 'add_description' ] );
 			add_action( 'woocommerce_thankyou_' . $this->id, [ $this, 'add_instructions' ] );
 			add_action( 'woocommerce_email_before_order_table', [ $this, 'add_instructions' ] );
 			add_filter( 'transaction_details_by_order_id', [ $this, 'transaction_details_by_order_id' ], 10, 2 );
@@ -177,8 +204,8 @@ if ( class_exists( "WC_Payment_Gateway_CC", false ) ) {
 				apply_filters( 'woocommerce_credit_card_form_fields', $default_fields, $this->id ) );
 			?>
 
-			<?php do_action( 'woocommerce_credit_card_form_start', $this->id ); ?>
             <fieldset id="wc-<?php echo esc_attr( $this->id ); ?>-cc-form" class='wc-credit-card-form wc-payment-form'>
+				<?php _e( wpautop( wptexturize( $this->get_option( 'description' ) ) ) ); ?>
 				<?php
 				foreach ( $fields as $field ) {
 					_e( $field );
@@ -186,7 +213,6 @@ if ( class_exists( "WC_Payment_Gateway_CC", false ) ) {
 				?>
                 <div class="clear"></div>
             </fieldset>
-			<?php do_action( 'woocommerce_credit_card_form_end', $this->id ); ?>
 			<?php
 		}
 
@@ -196,42 +222,7 @@ if ( class_exists( "WC_Payment_Gateway_CC", false ) ) {
 		 * @access public
 		 */
 		public function add_instructions() {
-			if ( $instructions = $this->get_option( 'instructions' ) ) {
-				_e( wpautop( wptexturize( $instructions . PHP_EOL ) ) );
-			}
-		}
-
-		/**
-		 * Add pay description
-		 *
-		 * @access public
-		 */
-		public function add_description() {
-			if ( $description = $this->get_option( 'description' ) ) {
-				_e( wpautop( wptexturize( $description . PHP_EOL ) ) );
-			}
-		}
-
-		public function check_response() {
-			$transaction_number = sanitize_text_field( $_GET['transactionNumber'] );
-			$transaction_status = sanitize_text_field( $_GET['transactionStatus'] );
-			if ( BINGOPAY_DEBUG ) {
-				Logger::info( [ $transaction_number, $transaction_status ] );
-			}
-			switch ( $transaction_status ) {
-				case Api::STATUS_APPROVED:
-					$transaction = DBHelper::transaction_details_by_transaction_id( $transaction_number );
-					if ( BINGOPAY_DEBUG ) {
-						Logger::info( $transaction );
-					}
-					if ( $transaction ) {
-						$order = wc_get_order( $transaction['order_id'] );
-						$order->payment_complete( $transaction_number );
-					} else {
-						Logger::error( esc_html__( 'Transaction is not found', 'wc-bingopay' ), $transaction_number );
-					}
-					break;
-			}
+			_e( wpautop( wptexturize( $this->get_option( 'instructions' ) . PHP_EOL ) ) );
 		}
 
 		private function get_settings() {
@@ -267,9 +258,43 @@ if ( class_exists( "WC_Payment_Gateway_CC", false ) ) {
 			return $settings;
 		}
 
+		public function check_response() {
+			$transaction_number = sanitize_text_field( $_GET['transactionNumber'] );
+			$transaction_status = sanitize_text_field( $_GET['transactionStatus'] );
+			$order_id           = sanitize_text_field( $_GET['order_id'] );
+			if ( BINGOPAY_DEBUG ) {
+				Logger::info( [ $transaction_number, $transaction_status, $order_id ] );
+			}
+			if ( $transaction_status == Api::STATUS_APPROVED ) {
+				$set_billing_address = false;
+				if ( empty( $order_id ) ) {
+					$order_id            = ( new \WC_Checkout() )->create_order( [] );
+					$set_billing_address = true;
+				}
+				$order = wc_get_order( $order_id );
+				$order->set_payment_method( $this->id );
+				$order->set_transaction_id( $transaction_number );
+				$transaction_details = DBHelper::transaction_details_by_transaction_id( $transaction_number );
+//				Logger::info( [ $transaction_number, $transaction_status, $order_id, $transaction_details ] );
+				if ( $set_billing_address ) {
+					$this->set_address( $order, $transaction_details, 'billing' );
+					$this->set_address( $order, $transaction_details, 'shipping' );
+					$order->save();
+				}
+				$order->payment_complete();
+				$order->update_status( 'processing' );
+				$url = $this->get_return_url( $order ) . '&window=parent';
+			} else {
+				$url = wc_get_endpoint_url( 'order-pay', '', wc_get_checkout_url() );
+			}
+			wp_safe_redirect( $url );
+			exit;
+		}
+
 		public function check_3ds() {
 			$settings = $this->get_settings();
 			$payload  = [
+				'order_id'    => sanitize_text_field( $_POST['order_id'] ),
 				'amount'      => sanitize_text_field( $_POST['amount'] ),
 				'currency'    => sanitize_text_field( $_POST['bingopay_gateway-card-currency-code'] ),
 				'card_number' => sanitize_text_field( $_POST['bingopay_gateway-card-number'] ),
@@ -284,119 +309,36 @@ if ( class_exists( "WC_Payment_Gateway_CC", false ) ) {
 				Logger::info( $response );
 			}
 			if ( ! empty( $response['result'] ) ) {
+				$payload['card_number'] = '****' . substr( $payload['card_number'], - 4 );
+				$log_info = [
+					'payment'  => $payload,
+					'billing'  => $this->get_address( 'billing' ),
+					'shipping' => $this->get_address( 'shipping' ),
+				];
+				DBHelper::save_transaction( $response['result']['transaction'], $log_info );
+
 				return $response['result'];
 			}
 
 			return false;
 		}
 
-		/**
-		 * Process the payment and return the result
-		 *
-		 * @param int $order_id
-		 *
-		 * @return mixed
-		 */
-		public function process_payment( $order_id ) {
+		private function get_address( $source ) {
+			$address = [];
 
-			$order    = wc_get_order( $order_id );
-			$currency = $order->get_currency();
-			$amount   = $order->get_total();
-
-			$settings = $this->get_settings();
-
-			$card_number = str_replace( ' ', '', sanitize_text_field( $_POST['bingopay_gateway-card-number'] ) );
-			$payload     = [
-				'order_id'      => $order_id,
-				'amount'        => $amount,
-				'currency'      => $currency,
-				'card_number'   => $card_number,
-				'card_expire'   => str_replace( ' ', '',
-					sanitize_text_field( $_POST['bingopay_gateway-card-expiry'] ) ),
-				'card_cvc'      => sanitize_text_field( $_POST['bingopay_gateway-card-cvc'] ),
-				'card_holder'   => sanitize_text_field( $_POST['bingopay_gateway-card-holder-name'] ),
-				'masked_cc_num' => substr( $card_number, 0, 4 ) . '****' . substr( $card_number, - 4 ),
-				'log_date'      => date( 'c' ),
-			];
-			$log_info    = [
-				'Order ID'    => $payload['order_id'],
-				'Payer ID'    => $settings['payer_id'],
-				'Amount'      => $payload['amount'],
-				'Date'        => $payload['log_date'],
-				'CC#'         => $payload['masked_cc_num'],
-				'CVV#'        => $payload['card_cvc'],
-				'Expire'      => $payload['card_expire'],
-				'Card Holder' => $payload['card_holder'],
-				'Currency'    => $payload['currency'],
-			];
-
-			$response = Api::create_transaction( $settings, $payload );
-			if ( BINGOPAY_DEBUG ) {
-				Logger::info( $response );
+			foreach ( $this->addresses[ $source ] as $key ) {
+				$address[ $key ] = sanitize_text_field( $_POST["{$source}_{$key}"] );
 			}
-			if ( $response ) {
-				switch ( $response['status'] ) {
-					case Api::RETURN_CODE_OK:
-						$transaction_id = $response['result']['transaction'];
-						switch ( $response['result']['status'] ) {
-							case Api::STATUS_IN_PROCESS:
-							case Api::STATUS_APPROVED:
-								DBHelper::save_transaction( $order_id, $transaction_id, $log_info );
-								$order->payment_complete( 1 );
-								// Remove cart
-								WC()->cart->empty_cart();
 
-								// Redirect to Thank You page
-								return [
-									'result'   => 'success',
-									'redirect' => $this->get_return_url( $order ),
-								];
-							case Api::STATUS_DENIED:
-								DBHelper::save_transaction( $order_id, $transaction_id, $log_info );
-								$error = 'The transaction was NOT completed due to errors';
-								wc_add_notice( esc_html__( $error ), 'error' );
-								Logger::error( $error, $log_info );
+			return $address;
+		}
 
-								return false;
-							case Api::STATUS_WAITING_CONFIRMATION:
-								DBHelper::save_transaction( $order_id, $transaction_id, $log_info );
-								$order->update_status( 'on-hold',
-									__( 'Awaiting payment confirmation', 'wc-bingopay' ) );
-								// show 3DS window
-								$url = $response['result']['redirect_url'];
-								// Remove cart
-								WC()->cart->empty_cart();
-
-								// Return thankyou redirect
-								return [
-									'result'   => 'success',
-									'redirect' => $this->get_return_url( $order ),
-								];
-						}
-						break;
-					case Api::RETURN_CODE_ERROR:
-						$error = '[' . (
-							is_array( $response['errors'] )
-								? implode( ', ', $response['errors'] )
-								: $response['errors']
-							) . ']';
-						wc_add_notice( esc_html__( $error ), 'error' );
-						Logger::error( $error, $log_info );
-
-						return false;
-					default:
-						$error = $response['errors'] ?? 'Unknown error';
-						wc_add_notice( esc_html__( $error ), 'error' );
-						Logger::error( $error, $log_info );
-
-						return false;
+		private function set_address( $order, $transaction, $source ) {
+			foreach ( $transaction[ $source ] ?? [] as $key => $value ) {
+//			    Logger::info(["set_{$source}_{$key}", is_callable( [ $order, "set_{$source}_{$key}" ] )]);
+				if ( is_callable( [ $order, "set_{$source}_{$key}" ] ) ) {
+					$order->{"set_{$source}_{$key}"}( $value );
 				}
-			} else {
-				$error = 'Unknown error';
-				wc_add_notice( esc_html__( $error ), 'error' );
-				Logger::error( $error, $log_info );
-
-				return false;
 			}
 		}
 	}
