@@ -76,6 +76,21 @@ class Api {
 		return self::make_post_request( $url, $args );
 	}
 
+	public static function get_error_message( $status ) {
+		switch ( $status ) {
+			case self::STATUS_IN_PROCESS:
+				return _( 'Transaction in progress, check status after a while', 'wc-bingopay' );
+			case self::STATUS_APPROVED:
+				return _( 'Transaction completed', 'wc-bingopay' );
+			case self::STATUS_DENIED:
+				return _( 'The transaction was NOT completed due to reasons beyond our control', 'wc-bingopay' );
+			case self::STATUS_WAITING_CONFIRMATION:
+				return _( 'Waiting for confirmation from the user ', 'wc-bingopay' );
+			default:
+				return _( 'Unknown error', 'wc-bingopay' );
+		}
+	}
+
 	private static function make_post_request( $url, $args ) {
 		if ( BINGOPAY_DEBUG ) {
 			Logger::info( [ $url, $args ] );

@@ -25,6 +25,7 @@ jQuery(document).ready( function($) {
                 alert('Check card holder name field');
                 return false;
             }
+            $('#bingopay-3ds-window').attr('src', '');
             $('#bingoPayModal').modal('show');
             $('.bingopay-3ds-window').hide();
             $('.iframe-loader').show();

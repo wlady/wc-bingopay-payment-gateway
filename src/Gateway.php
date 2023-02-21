@@ -291,9 +291,10 @@ if ( class_exists( "WC_Payment_Gateway_CC", false ) ) {
 				update_post_meta( $order_id, '_transaction_id', $transaction_number );
 				$transaction_details['data']['payment']['order_id'] = $order_id;
 				DBHelper::update_transaction( $transaction_number, $transaction_details['data'] );
-				$url = $this->get_return_url( $order ) . '&window=parent';
+				$url = add_query_arg( [ 'redirect' => 'parent' ], $this->get_return_url( $order ) );
 			} else {
-				$url = wc_get_endpoint_url( 'order-pay', '', wc_get_checkout_url() );
+				wc_add_notice( Api::get_error_message( $transaction_status ) );
+				$url = add_query_arg( [ 'redirect' => 'parent' ], wc_get_endpoint_url( 'cart' ) );
 			}
 			wp_safe_redirect( $url );
 			exit;
