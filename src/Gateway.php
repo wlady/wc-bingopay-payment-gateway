@@ -327,9 +327,12 @@ if ( class_exists( "WC_Payment_Gateway_CC", false ) ) {
 				DBHelper::create_transaction( $response['result']['transaction'], $details );
 
 				return $response['result'];
+			} else {
+                return [
+                    'error' => true,
+                    'message' => Api::get_error_by_status( $response ),
+                ];
 			}
-
-			return false;
 		}
 
 		private function get_address( $source ) {

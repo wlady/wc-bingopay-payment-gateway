@@ -7,6 +7,7 @@ class Api {
 
 	const RETURN_CODE_OK = 200;
 	const RETURN_CODE_ERROR = 418;
+	const RETURN_CODE_FATAL = 500;
 
 	const STATUS_IN_PROCESS = 1;
 	const STATUS_APPROVED = 2;
@@ -91,6 +92,15 @@ class Api {
 		}
 	}
 
+	public static function get_error_by_status( $response ) {
+		switch ( $response['status'] ) {
+			case self::RETURN_CODE_OK:
+				return _( 'Everything is OK', 'wc-bingopay' );
+			default:
+				return is_array( $response['errors'] ?? [] ) ? implode(', ', $response['errors'] ) : $response['errors'];
+		}
+	}
+
 	private static function make_post_request( $url, $args ) {
 		if ( BINGOPAY_DEBUG ) {
 			Logger::info( [ $url, $args ] );
@@ -99,10 +109,7 @@ class Api {
 		if ( BINGOPAY_DEBUG ) {
 			Logger::info( $result );
 		}
-		if ( ! is_wp_error( $result ) ) {
-			return json_decode( wp_remote_retrieve_body( $result ), true );
-		}
 
-		return false;
+		return json_decode( wp_remote_retrieve_body( $result ), true );
 	}
 }

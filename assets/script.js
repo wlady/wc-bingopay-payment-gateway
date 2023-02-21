@@ -26,6 +26,7 @@ jQuery(document).ready( function($) {
                 return false;
             }
             $('#bingopay-3ds-window').attr('src', '');
+            $('#bingoPayModal .error-message').html('');
             $('#bingoPayModal').modal('show');
             $('.bingopay-3ds-window').hide();
             $('.iframe-loader').show();
@@ -43,12 +44,24 @@ jQuery(document).ready( function($) {
                     contentType: false,
                     dataType: 'json',
                     success: function (response) {
-                        $('.bingopay-3ds-window').show();
                         $('.iframe-loader').hide();
                         if (response.data) {
-                            if (response.data.redirect_url.length !== 0) {
+                            if (response.data.error) {
+                                $('#bingoPayModal .error-message').html(response.data.message);
+                            } else if (response.data.redirect_url.length !== 0) {
+                                $('.bingopay-3ds-window').show();
                                 $('#bingopay-3ds-window').attr('src', response.data.redirect_url);
-                                $('#bingoPayModal').show();
+                            }
+                        }
+                    },
+                    failure: function (response) {
+                        $('.bingopay-3ds-window').hide();
+                        $('.iframe-loader').hide();
+                        if (response.data) {
+                            if (response.data.error) {
+                                $('#bingoPayModal .error-message').html(response.data.message);
+                            } else {
+                                $('#bingoPayModal .error-message').html(response.code);
                             }
                         }
                     }

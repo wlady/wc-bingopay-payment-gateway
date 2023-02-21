@@ -162,7 +162,6 @@ add_action( 'wp_footer', function () {
             top: 45%;
             animation: rotation 1s linear infinite;
         }
-
         @keyframes rotation {
             0% {
                 transform: rotate(0deg);
@@ -171,10 +170,14 @@ add_action( 'wp_footer', function () {
                 transform: rotate(360deg);
             }
         }
-
         .iframe-loader {
             width: 100%;
             height: 100%;
+        }
+        .error-message {
+            color: red;
+            position: absolute;
+            top: 50%;
         }
     </style>
     <div class="modal fade" id="bingoPayModal" tabindex="-1" aria-labelledby="bingoPayModalLabel" aria-hidden="true">
@@ -182,6 +185,7 @@ add_action( 'wp_footer', function () {
             <div class="modal-content">
                 <div class="modal-body">
                     <div class="iframe-loader"><span class="loader"></span></div>
+                    <div class="error-message"></div>
                     <iframe id="bingopay-3ds-window" width="100%" height="600vh" src="" frameborder="0"></iframe>
                 </div>
             </div>
