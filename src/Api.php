@@ -51,11 +51,11 @@ class Api {
 					'validity'     => $payload['card_expire'],
 					'amount'       => $payload['amount'],
 					'currency'     => $payload['currency'],
-					'callback_url' => BINGOPAY_CALLBACK_URL,
+					'callback_url' => add_query_arg( [ 'order_id' => $payload['order_id'], ], BINGOPAY_CALLBACK_URL ),
 				]
 			),
 		];
-		$url  = sprintf( '%s/%s?order_id=%s', self::API_URL, self::CREATE_PAYMENT_PATH, $payload['order_id'] );
+		$url  = sprintf( '%s/%s', self::API_URL, self::CREATE_PAYMENT_PATH );
 
 		return self::make_post_request( $url, $args );
 	}
@@ -81,24 +81,25 @@ class Api {
 	public static function get_error_message( $status ) {
 		switch ( $status ) {
 			case self::STATUS_IN_PROCESS:
-				return _( 'Transaction in progress, check status after a while', 'wc-bingopay' );
+				return __( 'Transaction in progress, check status after a while', 'wc-bingopay' );
 			case self::STATUS_APPROVED:
-				return _( 'Transaction completed', 'wc-bingopay' );
+				return __( 'Transaction completed', 'wc-bingopay' );
 			case self::STATUS_DENIED:
-				return _( 'The transaction was NOT completed due to reasons beyond our control', 'wc-bingopay' );
+				return __( 'The transaction was NOT completed due to reasons beyond our control', 'wc-bingopay' );
 			case self::STATUS_WAITING_CONFIRMATION:
-				return _( 'Waiting for confirmation from the user ', 'wc-bingopay' );
+				return __( 'Waiting for confirmation from the user ', 'wc-bingopay' );
 			default:
-				return _( 'Unknown error', 'wc-bingopay' );
+				return __( 'Unknown error', 'wc-bingopay' );
 		}
 	}
 
 	public static function get_error_by_status( $response ) {
 		switch ( $response['status'] ) {
 			case self::RETURN_CODE_OK:
-				return _( 'Everything is OK', 'wc-bingopay' );
+				return __( 'Everything is OK', 'wc-bingopay' );
 			default:
-				return is_array( $response['errors'] ?? [] ) ? implode(', ', $response['errors'] ) : $response['errors'];
+				return is_array( $response['errors'] ?? [] ) ? implode( ', ',
+					$response['errors'] ) : $response['errors'];
 		}
 	}
 

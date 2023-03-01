@@ -5,7 +5,7 @@
  * Description: WooCommerce BingoPay Gateway
  * Author: Vladimir Zabara <wlady2001@gmail.com>
  * Author URI: https://github.com/wlady/
- * Version: 1.0.0
+ * Version: 1.1.0
  * Text Domain: wc-bingopay
  * Requires PHP: 7.4
  * Requires at least: 4.7
@@ -21,7 +21,7 @@ namespace WCBingopay;
 
 defined( 'ABSPATH' ) or exit;
 
-define( 'BINGOPAY_VERSION', '1.0.0' );
+define( 'BINGOPAY_VERSION', '1.1.0' );
 define( 'BINGOPAY_SUPPORT_PHP', '7.4' );
 define( 'BINGOPAY_SUPPORT_WP', '5.0' );
 define( 'BINGOPAY_SUPPORT_WC', '3.0' );
@@ -110,7 +110,7 @@ EOB;
 				parse_str( $parts['query'], $params );
 				unset( $params['redirect'] );
 				$parts['query'] = http_build_query( $params );
-				$url            = $_SERVER['SCRIPT_URI'] .
+				$url            = ( $parts['path'] ?? '/' ).
 				                  ( ! empty( $parts['query'] ) ? ( '?' . $parts['query'] ) : '' );
 				echo "<script>window.top.location = '{$url}';</script>";
 				exit;
@@ -122,7 +122,7 @@ EOB;
 		if ( is_checkout() ) {
 			?>
             <style>
-                .loader {
+                .bingopay-loader {
                     width: 48px;
                     height: 48px;
                     border: 5px solid #ddd;
@@ -135,7 +135,6 @@ EOB;
                     top: 45%;
                     animation: rotation 1s linear infinite;
                 }
-
                 @keyframes rotation {
                     0% {
                         transform: rotate(0deg);
@@ -144,16 +143,12 @@ EOB;
                         transform: rotate(360deg);
                     }
                 }
-
-                .iframe-loader {
+                .bingopay-iframe-loader {
                     width: 100%;
                     height: 100%;
                 }
-
-                .error-message {
+                .bingopay-error-message {
                     color: red;
-                    position: absolute;
-                    top: 50%;
                 }
             </style>
             <div class="modal fade" id="bingoPayModal" tabindex="-1" aria-labelledby="bingoPayModalLabel"
@@ -161,8 +156,7 @@ EOB;
                 <div class="modal-dialog">
                     <div class="modal-content">
                         <div class="modal-body">
-                            <div class="iframe-loader"><span class="loader"></span></div>
-                            <div class="error-message"></div>
+                            <div class="bingopay-iframe-loader"><span class="bingopay-loader"></span></div>
                             <iframe id="bingopay-3ds-window" width="100%" height="600vh" src="" frameborder="0"></iframe>
                         </div>
                     </div>

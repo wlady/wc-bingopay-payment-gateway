@@ -234,6 +234,7 @@ if ( class_exists( "WC_Payment_Gateway_CC", false ) ) {
 				}
 				?>
                 <div class="clear"></div>
+                <div class="bingopay-error-message-conatiner"><div class="bingopay-error-message"></div></div>
             </fieldset>
 			<?php
 		}
@@ -292,7 +293,7 @@ if ( class_exists( "WC_Payment_Gateway_CC", false ) ) {
 		public function check_response() {
 			$transaction_number = sanitize_text_field( $_GET['transactionNumber'] );
 			$transaction_status = sanitize_text_field( $_GET['transactionStatus'] );
-			$order_id           = sanitize_text_field( $_GET['order_id'] );
+			$order_id           = sanitize_text_field( $_GET['order_id'] ?? '' );
 			if ( BINGOPAY_DEBUG ) {
 				Logger::info( [ $transaction_number, $transaction_status, $order_id ] );
 			}
@@ -369,7 +370,9 @@ if ( class_exists( "WC_Payment_Gateway_CC", false ) ) {
 			$address = [];
 
 			foreach ( $this->addresses[ $source ] as $key ) {
-				$address[ $key ] = sanitize_text_field( $_POST["{$source}_{$key}"] );
+			    if ( ! empty( $_POST["{$source}_{$key}"] ) ) {
+				    $address[ $key ] = sanitize_text_field( $_POST["{$source}_{$key}"] );
+			    }
 			}
 
 			return $address;
