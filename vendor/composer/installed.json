@@ -1,5 +1,48 @@
 {
-    "packages": [],
+    "packages": [
+        {
+            "name": "wlady/wp-plugin-env",
+            "version": "dev-main",
+            "version_normalized": "dev-main",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/wlady/wp-plugin-env.git",
+                "reference": "e4de831c47d914d9d077d98151bb9856fb322c88"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/wlady/wp-plugin-env/zipball/e4de831c47d914d9d077d98151bb9856fb322c88",
+                "reference": "e4de831c47d914d9d077d98151bb9856fb322c88",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^7.4|^8.0"
+            },
+            "time": "2023-03-01T10:23:03+00:00",
+            "default-branch": true,
+            "type": "library",
+            "installation-source": "dist",
+            "autoload": {
+                "psr-4": {
+                    "Plugin\\Env\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "description": "WP plugin environment checker",
+            "keywords": [
+                "environment",
+                "plugin",
+                "wordpress"
+            ],
+            "support": {
+                "source": "https://github.com/wlady/wp-plugin-env/tree/main",
+                "issues": "https://github.com/wlady/wp-plugin-env/issues"
+            },
+            "install-path": "../wlady/wp-plugin-env"
+        }
+    ],
     "dev": true,
     "dev-package-names": []
 }

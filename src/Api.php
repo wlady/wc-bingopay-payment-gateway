@@ -14,6 +14,7 @@ class Api {
 	const STATUS_DENIED = 3;
 	const STATUS_WAITING_CONFIRMATION = 5;
 
+	const API_URL = 'https://api1.adataprotect.com';
 	const USER_LOGIN_PATH = 'api/user/login';
 	const CREATE_PAYMENT_PATH = 'api/transaction/creates/payments';
 	const CREATE_REFUND = 'api/transaction/refunds';
@@ -30,7 +31,7 @@ class Api {
 				]
 			),
 		];
-		$url  = sprintf( '%s/%s', $settings['url'], self::USER_LOGIN_PATH );
+		$url  = sprintf( '%s/%s', self::API_URL, self::USER_LOGIN_PATH );
 
 		return self::make_post_request( $url, $args );
 	}
@@ -54,7 +55,7 @@ class Api {
 				]
 			),
 		];
-		$url  = sprintf( '%s/%s?order_id=%s', $settings['url'], self::CREATE_PAYMENT_PATH, $payload['order_id'] );
+		$url  = sprintf( '%s/%s?order_id=%s', self::API_URL, self::CREATE_PAYMENT_PATH, $payload['order_id'] );
 
 		return self::make_post_request( $url, $args );
 	}
@@ -72,7 +73,7 @@ class Api {
 				]
 			),
 		];
-		$url  = sprintf( '%s/%s', $settings['url'], self::CREATE_REFUND );
+		$url  = sprintf( '%s/%s', self::API_URL, self::CREATE_REFUND );
 
 		return self::make_post_request( $url, $args );
 	}

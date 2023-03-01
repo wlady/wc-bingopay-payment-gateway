@@ -11,12 +11,20 @@ class ComposerStaticInit8be86d6ef8e92657279c73718a81c076
         array (
             'WCBingopay\\' => 11,
         ),
+        'P' => 
+        array (
+            'Plugin\\Env\\' => 11,
+        ),
     );
 
     public static $prefixDirsPsr4 = array (
         'WCBingopay\\' => 
         array (
             0 => __DIR__ . '/../..' . '/src',
+        ),
+        'Plugin\\Env\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/wlady/wp-plugin-env/src',
         ),
     );
 

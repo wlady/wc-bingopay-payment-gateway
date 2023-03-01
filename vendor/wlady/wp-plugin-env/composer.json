@@ -1,0 +1,16 @@
+{
+  "name": "wlady/wp-plugin-env",
+  "type": "library",
+  "description": "WP plugin environment checker",
+  "keywords": ["wordpress", "plugin", "environment"],
+  "license": "MIT",
+  "authors": [],
+  "require": {
+    "php": "^7.4|^8.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "Plugin\\Env\\": "src/"
+    }
+  }
+}

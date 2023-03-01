@@ -17,7 +17,7 @@ Allow users to make payments with credit / debit cards via BingoPay.
 
 == Frequently Asked Questions ==
 
-= Is this PCI DSS compatible? =
+= Is it PCI DSS compatible? =
 
 Yes, absolutely. Visit BingoPay website for more info.
 

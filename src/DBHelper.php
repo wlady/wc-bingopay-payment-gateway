@@ -4,16 +4,18 @@ namespace WCBingopay;
 
 class DBHelper {
 
+	const DB_VERSION = 1;
+
 	/**
 	 * 	See https://codex.wordpress.org/Creating_Tables_with_Plugins
 	 */
-	public static function install_db() {
+	public static function check_db() {
 		global $wpdb;
 
 		require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
 
 		$installed_ver = get_option( "BINGOPAY_DB_VERSION" );
-		if ( $installed_ver != BINGOPAY_DB_VERSION ) {
+		if ( $installed_ver != self::DB_VERSION ) {
 			$sql = "CREATE TABLE {$wpdb->prefix}bingopay_transactions (
                      id int(11) NOT NULL AUTO_INCREMENT,
                      transaction_id char(50) COLLATE utf8_unicode_ci DEFAULT NULL,
@@ -24,7 +26,7 @@ class DBHelper {
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci";
 			dbDelta( $sql );
 
-			update_option( 'BINGOPAY_DB_VERSION', BINGOPAY_DB_VERSION );
+			update_option( 'BINGOPAY_DB_VERSION', self::DB_VERSION );
 		}
 	}
 

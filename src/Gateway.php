@@ -2,16 +2,26 @@
 
 namespace WCBingopay;
 
+use Plugin\Env\ {
+    Checker,
+	PluginInterface
+};
+
 /**
  * BingoPay Payment Gateway
  *
  * @class        WCBingoPayGateway
  * @extends      WC_Payment_Gateway_CC
- * @package      WooCommerce/Classes/Payment
  * @author       Vladimir Zabara
  */
 if ( class_exists( "WC_Payment_Gateway_CC", false ) ) {
-	class Gateway extends \WC_Payment_Gateway_CC {
+	class Gateway extends \WC_Payment_Gateway_CC implements PluginInterface {
+
+		const WC_GATEWAY_NAME = 'WC_Gateway_BingoPay';
+
+		private static $gateway_name = 'BingoPay';
+		private static $gateway_id = 'bingopay_gateway';
+		private static $text_domain = 'wc-bingopay';
 
 		public $supports = [
 			'products',
@@ -48,40 +58,35 @@ if ( class_exists( "WC_Payment_Gateway_CC", false ) ) {
 
 		public function __construct() {
 
-			$this->id                 = 'bingopay_gateway';
+			$this->id                 = self::$gateway_id;
 			$this->icon               = '';
 			$this->has_fields         = true;
-			$this->method_title       = __( 'BingoPay', 'wc-bingopay' );
-			$this->method_description = __( 'Make payments with BingoPay', 'wc-bingopay' );
+			$this->method_title       = __( self::$gateway_name, self::$text_domain );
+			$this->method_description = __( 'Make payments with ' . self::$gateway_name, self::$text_domain );
 
 			// Load the settings.
 			$this->init_form_fields();
 			$this->init_settings();
 
 			// Define user set variables
-			$this->title        = $this->get_option( 'title' );
-			$this->description  = $this->get_option( 'description' );
-			$this->instructions = $this->get_option( 'instructions' );
+			$this->enabled     = $this->get_option( 'enabled' );
+			$this->title       = $this->get_option( 'title' );
+			$this->description = $this->get_option( 'description' );
 
 			// Actions
-			add_action( 'woocommerce_update_options_payment_gateways_' . $this->id,
-				[ $this, 'process_admin_options' ] );
-			add_action( 'woocommerce_thankyou_' . $this->id, [ $this, 'add_instructions' ] );
-			add_action( 'woocommerce_email_before_order_table', [ $this, 'add_instructions' ] );
-			add_filter( 'transaction_details_by_order_id', [ $this, 'transaction_details_by_order_id' ], 10, 2 );
-			add_action( 'woocommerce_api_wc_gateway_bingopay', [ $this, 'check_response' ] );
+			add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, [ $this, 'process_admin_options' ] );
+			add_action( 'woocommerce_api_' . strtolower( self::WC_GATEWAY_NAME ), [ $this, 'check_response' ] );
+			add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_scripts' ] );
 
 			$this->init();
 		}
 
 		private function init() {
-			if ( ! Checker::check_environment() ) {
+			if ( ! ( new Checker( $this ) )->check() ) {
 				return;
 			}
 
-			if ( get_site_option( 'BINGOPAY_DB_VERSION' ) != BINGOPAY_DB_VERSION ) {
-				DBHelper::install_db();
-			}
+			DBHelper::check_db();
 		}
 
 		/**
@@ -92,72 +97,87 @@ if ( class_exists( "WC_Payment_Gateway_CC", false ) ) {
 			$this->form_fields = apply_filters( 'wc_bingopay_form_fields', [
 
 				'enabled' => [
-					'title'   => __( 'Enable/Disable', 'wc-bingopay' ),
+					'title'   => __( 'Enable/Disable', self::$text_domain ),
 					'type'    => 'checkbox',
-					'label'   => __( 'Enable BingoPay', 'wc-bingopay' ),
+					'label'   => __( 'Enable ' . self::$gateway_name, self::$text_domain ),
 					'default' => 'yes',
 				],
 
 				'title' => [
-					'title'       => __( 'Title', 'wc-bingopay' ),
+					'title'       => __( 'Title', self::$text_domain ),
 					'type'        => 'text',
-					'description' => __( 'The title for the payment method.', 'wc-bingopay' ),
-					'default'     => __( 'BingoPay', 'wc-bingopay' ),
+					'description' => __( 'The title for the payment method.', self::$text_domain ),
+					'default'     => __( self::$gateway_name, self::$text_domain ),
 					'desc_tip'    => true,
 				],
 
 				'description' => [
-					'title'       => __( 'Description', 'wc-bingopay' ),
+					'title'       => __( 'Description', self::$text_domain ),
 					'type'        => 'textarea',
-					'description' => __( 'Payment method description.', 'wc-bingopay' ),
-					'default'     => '',
-					'desc_tip'    => true,
-				],
-
-				'instructions' => [
-					'title'       => __( 'Instructions', 'wc-bingopay' ),
-					'type'        => 'textarea',
-					'description' => __( 'Instructions will be added to the emails.', 'wc-bingopay' ),
+					'description' => __( 'Payment method description.', self::$text_domain ),
 					'default'     => '',
 					'desc_tip'    => true,
 				],
 
 				'account_settings' => [
-					'title'       => __( 'Account Settings', 'wc-bingopay' ),
+					'title'       => __( 'Account Settings', self::$text_domain ),
 					'type'        => 'title',
 					'description' => '',
 				],
 
-				'bingopay_api_url' => [
-					'title'       => __( 'API Url', 'wc-bingopay' ),
-					'type'        => 'text',
-					'description' => __( 'Contact BingoPay integration team to get correct URL.', 'wc-bingopay' ),
-				],
-
 				'bingopay_login' => [
-					'title'       => __( 'Login', 'wc-bingopay' ),
+					'title'       => __( 'Login', self::$text_domain ),
 					'type'        => 'text',
-					'description' => __( 'Contact BingoPay integration team to get Your login.', 'wc-bingopay' ),
+					'description' => __( 'Contact integration team to get Your login.', self::$text_domain ),
 				],
 
 				'bingopay_password' => [
-					'title'       => __( 'Password', 'wc-bingopay' ),
+					'title'       => __( 'Password', self::$text_domain ),
 					'type'        => 'text',
-					'description' => __( 'Contact BingoPay integration team to get Your password.', 'wc-bingopay' ),
+					'description' => __( 'Contact integration team to get Your password.', self::$text_domain ),
 				],
 
 				'bingopay_payer_id' => [
-					'title'       => __( 'Payer ID', 'wc-bingopay' ),
+					'title'       => __( 'Payer ID', self::$text_domain ),
 					'type'        => 'text',
-					'description' => __( 'Contact BingoPay integration team to get Your Payer ID.', 'wc-bingopay' ),
+					'description' => __( 'Contact integration team to get Your Payer ID.', self::$text_domain ),
 				],
 
 				'bingopay_token' => [
-					'title'       => __( 'Token', 'wc-bingopay' ),
+					'title'       => __( 'Token', self::$text_domain ),
 					'type'        => 'text',
-					'description' => __( 'To reset the token leave this field empty.', 'wc-bingopay' ),
+					'description' => __( 'To reset the token leave this field empty.', self::$text_domain ),
 				],
 
+			] );
+		}
+
+		public function enqueue_scripts() {
+			if ( ! is_cart() && ! is_checkout() && 'no' === $this->enabled ) {
+				return;
+			}
+
+			wp_enqueue_script(
+				'bootstrap',
+				plugins_url( 'assets/bootstrap.min.js', BINGOPAY_PLUGIN_NAME ),
+				[ 'jquery' ],
+				BINGOPAY_VERSION
+			);
+			wp_enqueue_script(
+				'bingopay-script',
+				plugins_url( 'assets/script.js', BINGOPAY_PLUGIN_NAME ),
+				[ 'jquery' ],
+				BINGOPAY_VERSION
+			);
+			wp_enqueue_style(
+				'bootstrap',
+				plugins_url( 'assets/bootstrap.min.css', BINGOPAY_PLUGIN_NAME ),
+				[],
+				BINGOPAY_VERSION
+			);
+			wp_localize_script( 'jquery', 'ajax', [
+				'url'   => admin_url( 'admin-ajax.php' ),
+				'nonce' => wp_create_nonce( 'bingopay_ajax_nonce' ),
 			] );
 		}
 
@@ -176,29 +196,30 @@ if ( class_exists( "WC_Payment_Gateway_CC", false ) ) {
 			$fields = [];
 
 			$default_fields = [
-				'card-number-field'      => '<p class="form-row form-row-wide">
-                    <label for="' . esc_attr( $this->id ) . '-card-number">' . esc_html__( 'Card number',
-						'wc-bingopay' ) . '&nbsp;<span class="required">*</span></label>
-                    <input id="' . esc_attr( $this->id ) . '-card-number" class="input-text wc-credit-card-form-card-number" inputmode="numeric" autocomplete="cc-number" autocorrect="no" autocapitalize="no" spellcheck="no" type="tel" placeholder="&bull;&bull;&bull;&bull; &bull;&bull;&bull;&bull; &bull;&bull;&bull;&bull; &bull;&bull;&bull;&bull;" ' . $this->field_name( 'card-number' ) . ' />
+				'card-number' => '<p class="form-row form-row-wide">
+                    <label for="' . esc_attr( $this->get_name( 'card-number' ) ) . '">' . esc_html__( 'Card number',
+						self::$text_domain ) . '&nbsp;<span class="required">*</span></label>
+                    <input id="' . esc_attr( $this->get_name( 'card-number' ) ) . '" class="input-text wc-credit-card-form-card-number" inputmode="numeric" autocomplete="cc-number" autocorrect="no" autocapitalize="no" spellcheck="no" type="tel" placeholder="&bull;&bull;&bull;&bull; &bull;&bull;&bull;&bull; &bull;&bull;&bull;&bull; &bull;&bull;&bull;&bull;" ' . $this->field_name( 'card-number' ) . ' />
                 </p>',
-				'card-expiry-field'      => '<p class="form-row form-row-first">
-                    <label for="' . esc_attr( $this->id ) . '-card-expiry">' . esc_html__( 'Expiry (MM/YY)',
-						'wc-bingopay' ) . '&nbsp;<span class="required">*</span></label>
-                    <input id="' . esc_attr( $this->id ) . '-card-expiry" class="input-text wc-credit-card-form-card-expiry" inputmode="numeric" autocomplete="cc-exp" autocorrect="no" autocapitalize="no" spellcheck="no" type="tel" maxlength="7" placeholder="' . esc_attr__( 'MM / YY',
-						'wc-bingopay' ) . '" ' . $this->field_name( 'card-expiry' ) . ' />
+				'card-expiry' => '<p class="form-row form-row-first">
+                    <label for="' . esc_attr( $this->get_name( 'card-expiry' ) ) . '">' . esc_html__( 'Expiry (MM/YY)',
+						self::$text_domain ) . '&nbsp;<span class="required">*</span></label>
+                    <input id="' . esc_attr( $this->get_name( 'card-expiry' ) ) . '" class="input-text wc-credit-card-form-card-expiry" inputmode="numeric" autocomplete="cc-exp" autocorrect="no" autocapitalize="no" spellcheck="no" type="tel" maxlength="7" placeholder="' . esc_attr__( 'MM / YY',
+						self::$text_domain ) . '" ' . $this->field_name( 'card-expiry' ) . ' />
                 </p>',
 				'<p class="form-row form-row-last">
-                    <label for="' . esc_attr( $this->id ) . '-card-cvc">' . esc_html__( 'Card code', 'wc-bingopay' ) . '&nbsp;<span class="required">*</span></label>
-                    <input id="' . esc_attr( $this->id ) . '-card-cvc" class="input-text wc-credit-card-form-card-cvc" inputmode="numeric" autocomplete="off" autocorrect="no" autocapitalize="no" spellcheck="no" type="tel" maxlength="4" placeholder="' . esc_attr__( 'CVC',
-					'wc-bingopay' ) . '" ' . $this->field_name( 'card-cvc' ) . ' style="width:100px" />
+                    <label for="' . esc_attr( $this->get_name( 'card-cvc' ) ) . '">' . esc_html__( 'Card code',
+					self::$text_domain ) . '&nbsp;<span class="required">*</span></label>
+                    <input id="' . esc_attr( $this->get_name( 'card-cvc' ) ) . '" class="input-text wc-credit-card-form-card-cvc" inputmode="numeric" autocomplete="off" autocorrect="no" autocapitalize="no" spellcheck="no" type="tel" maxlength="4" placeholder="' . esc_attr__( 'CVC',
+					self::$text_domain ) . '" ' . $this->field_name( 'card-cvc' ) . ' style="width:100px" />
                 </p>',
-				'card-holder-name-field' => '<p class="form-row form-row-wide">
-                    <label for="' . esc_attr( $this->id ) . '-card-holder-name">' . esc_html__( 'Holder Name',
-						'wc-bingopay' ) . '&nbsp;<span class="required">*</span></label>
-                    <input id="' . esc_attr( $this->id ) . '-card-holder-name" class="input-text wc-credit-card-form-card-holder-name" autocomplete="cc-holder-name" autocorrect="no" autocapitalize="no" spellcheck="no" type="text" placeholder="' . esc_attr__( 'Holder Name',
-						'wc-bingopay' ) . '" ' . $this->field_name( 'card-holder-name' ) . ' />
+				'holder-name' => '<p class="form-row form-row-wide">
+                    <label for="' . esc_attr( $this->get_name( 'card-holder-name' ) ) . '">' . esc_html__( 'Holder Name',
+						self::$text_domain ) . '&nbsp;<span class="required">*</span></label>
+                    <input id="' . esc_attr( $this->get_name( 'card-holder-name' ) ) . '" class="input-text wc-credit-card-form-card-holder-name" autocomplete="cc-holder-name" autocorrect="no" autocapitalize="no" spellcheck="no" type="text" placeholder="' . esc_attr__( 'Holder Name',
+						self::$text_domain ) . '" ' . $this->field_name( 'card-holder-name' ) . ' />
                 </p>',
-				'card-currency-field'    => '<input id="' . esc_attr( $this->id ) . '-card-currency" type="hidden" value="' . get_woocommerce_currency() . '" ' . $this->field_name( 'card-currency-code' ) . ' />',
+				'currency'    => '<input id="' . esc_attr( $this->get_name( 'card-currency-code' ) ) . '" type="hidden" value="' . get_woocommerce_currency() . '" ' . $this->field_name( 'card-currency-code' ) . ' />',
 			];
 
 			$fields = wp_parse_args( $fields,
@@ -218,17 +239,25 @@ if ( class_exists( "WC_Payment_Gateway_CC", false ) ) {
 		}
 
 		/**
-		 * Add pay instructions
+		 * Output field name HTML
 		 *
-		 * @access public
+		 * Gateways which support tokenization do not require names - we don't want the data to post to the server.
+		 *
+		 * @param string $name Field name.
+		 *
+		 * @return string
+		 * @since  2.6.0
 		 */
-		public function add_instructions() {
-			_e( wpautop( wptexturize( $this->get_option( 'instructions' ) . PHP_EOL ) ) );
+		public function field_name( $name ) {
+			return $this->supports( 'tokenization' ) ? '' : ' name="' . esc_attr( $this->get_name( $name ) ) . '" ';
+		}
+
+		private function get_name( $name ) {
+			return $this->id . '-' . $name;
 		}
 
 		private function get_settings() {
 			$settings = [
-				'url'      => rtrim( $this->get_option( 'bingopay_api_url' ), '/' ),
 				'login'    => $this->get_option( 'bingopay_login' ),
 				'password' => $this->get_option( 'bingopay_password' ),
 				'payer_id' => $this->get_option( 'bingopay_payer_id' ),
@@ -237,8 +266,9 @@ if ( class_exists( "WC_Payment_Gateway_CC", false ) ) {
 
 			$settings = apply_filters( 'bingopay_settings', $settings );
 
-			if ( empty( $settings['url'] ) || empty( $settings['login'] ) || empty( $settings['password'] ) || empty( $settings['payer_id'] ) ) {
-				wc_add_notice( esc_html__( 'Incorrect BingoPay Gateway Settings', 'wc-bingopay' ), 'error' );
+			if ( empty( $settings['login'] ) || empty( $settings['password'] ) || empty( $settings['payer_id'] ) ) {
+				wc_add_notice( esc_html__( 'Incorrect ' . self::$gateway_name . ' Settings', self::$text_domain ),
+					'error' );
 
 				return false;
 			}
@@ -249,7 +279,7 @@ if ( class_exists( "WC_Payment_Gateway_CC", false ) ) {
 					$this->update_option( 'bingopay_token', $settings['bingopay_token'] );
 				} else {
 					$error = 'Cannot get token';
-					wc_add_notice( esc_html__( $error, 'wc-bingopay' ), 'error' );
+					wc_add_notice( esc_html__( $error, self::$text_domain ), 'error' );
 					Logger::error( $error, $settings );
 
 					return false;
@@ -306,12 +336,12 @@ if ( class_exists( "WC_Payment_Gateway_CC", false ) ) {
 				'user_id'     => get_current_user_id(),
 				'order_id'    => sanitize_text_field( $_POST['order_id'] ),
 				'amount'      => sanitize_text_field( $_POST['amount'] ),
-				'currency'    => sanitize_text_field( $_POST['bingopay_gateway-card-currency-code'] ),
-				'card_number' => sanitize_text_field( $_POST['bingopay_gateway-card-number'] ),
+				'currency'    => sanitize_text_field( $_POST[ $this->get_name( 'card-currency-code' ) ] ),
+				'card_number' => sanitize_text_field( $_POST[ $this->get_name( 'card-number' ) ] ),
 				'card_expire' => str_replace( ' ', '',
-					sanitize_text_field( $_POST['bingopay_gateway-card-expiry'] ) ),
-				'card_cvc'    => sanitize_text_field( $_POST['bingopay_gateway-card-cvc'] ),
-				'card_holder' => sanitize_text_field( $_POST['bingopay_gateway-card-holder-name'] ),
+					sanitize_text_field( $_POST[ $this->get_name( 'card-expiry' ) ] ) ),
+				'card_cvc'    => sanitize_text_field( $_POST[ $this->get_name( 'card-cvc' ) ] ),
+				'card_holder' => sanitize_text_field( $_POST[ $this->get_name( 'card-holder-name' ) ] ),
 			];
 
 			$response = Api::create_transaction( $settings, $payload );
@@ -328,10 +358,10 @@ if ( class_exists( "WC_Payment_Gateway_CC", false ) ) {
 
 				return $response['result'];
 			} else {
-                return [
-                    'error' => true,
-                    'message' => Api::get_error_by_status( $response ),
-                ];
+				return [
+					'error'   => true,
+					'message' => Api::get_error_by_status( $response ),
+				];
 			}
 		}
 
@@ -370,6 +400,32 @@ if ( class_exists( "WC_Payment_Gateway_CC", false ) ) {
 			$response       = Api::refund( $settings, $payload );
 
 			return ( ! empty( $response['status'] ) && $response['status'] == Api::RETURN_CODE_OK );
+		}
+
+		// PluginInterface methods
+
+		public function plugin_name() {
+			return self::$gateway_name;
+		}
+
+		public function plugin_text_domain() {
+			return self::$text_domain;
+		}
+
+		public function plugin_version() {
+			return BINGOPAY_VERSION;
+		}
+
+		public function supported_wp() {
+			return BINGOPAY_SUPPORT_WP;
+		}
+
+		public function supported_wc() {
+			return BINGOPAY_SUPPORT_WC;
+		}
+
+		public function supported_php() {
+			return BINGOPAY_SUPPORT_PHP;
 		}
 	}
 }

@@ -4,17 +4,59 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "68ccbdadec4c9a5ea039cb25aec2660e",
-    "packages": [],
+    "content-hash": "51a4a10401281e71044087a2e0e192dc",
+    "packages": [
+        {
+            "name": "wlady/wp-plugin-env",
+            "version": "dev-main",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/wlady/wp-plugin-env.git",
+                "reference": "e4de831c47d914d9d077d98151bb9856fb322c88"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/wlady/wp-plugin-env/zipball/e4de831c47d914d9d077d98151bb9856fb322c88",
+                "reference": "e4de831c47d914d9d077d98151bb9856fb322c88",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^7.4|^8.0"
+            },
+            "default-branch": true,
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Plugin\\Env\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "description": "WP plugin environment checker",
+            "keywords": [
+                "environment",
+                "plugin",
+                "wordpress"
+            ],
+            "support": {
+                "source": "https://github.com/wlady/wp-plugin-env/tree/main",
+                "issues": "https://github.com/wlady/wp-plugin-env/issues"
+            },
+            "time": "2023-03-01T10:23:03+00:00"
+        }
+    ],
     "packages-dev": [],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": [],
+    "stability-flags": {
+        "wlady/wp-plugin-env": 20
+    },
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {
         "php": "^7.4|^8.0"
     },
     "platform-dev": [],
-    "plugin-api-version": "2.2.0"
+    "plugin-api-version": "2.3.0"
 }
